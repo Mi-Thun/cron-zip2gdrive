@@ -18,7 +18,6 @@ PARENT_FOLDER_PATH = "/home/mithun/sgc-project"
 DATE_SUFFIX = datetime.date.today().strftime("%Y-%m-%d")
 LOG_FILE = os.path.join(BASE_DIR, 'backup-cron.log')
 
-# Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s: %(message)s',
@@ -28,7 +27,34 @@ logging.basicConfig(
     ]
 )
 
-EXCLUDE_DIRS = {"node_modules", "env", "venv", "__pycache__", ".idea", ".vscode", "backup-cron"}
+projects = {
+    "3pcl-lms": False,
+    "bg-ebg-185123": True,
+    "bg-elending-8623": True,
+    "bibili": False,
+    "card-payment": True,
+    "card-services": True,
+    "database-docker": True,
+    "dwh": False,
+    "dwh-working_importer": True,
+    "gastroliver": True,
+    "golimit": True,
+    "inteliqx": True,
+    "limit-doc": True,
+    "mcc": True,
+    "rm-tagging": True,
+    "samsuddin-portfolio": False,
+    "section-roster": True,
+    "sgcsoft-website": False,
+    "sme": True,
+    "tax-return": True,
+    "tdtr-encashment": True,
+    "tdtr-encashment-ssl": True,
+    "#document": True
+}
+
+EXCLUDE_DIRS = {k for k, v in projects.items() if not v}
+EXCLUDE_DIRS.update({"node_modules", "env", "venv", "__pycache__", ".idea", ".vscode"})
 EXCLUDE_EXTENSIONS = {".pyc", ".log", ".cache"}
 
 def zip_directory(source_dir, zip_file_path):
