@@ -14,7 +14,11 @@ from google.auth.transport.requests import Request
 import pickle
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_FOLDER_PATH = "/home/mithun/sgc-project"
+DATE_SUFFIX = datetime.date.today().strftime("%Y-%m-%d")
 LOG_FILE = os.path.join(BASE_DIR, 'backup-cron.log')
+
+# Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s: %(message)s',
@@ -24,7 +28,7 @@ logging.basicConfig(
     ]
 )
 
-EXCLUDE_DIRS = {"node_modules", "env", "venv", "__pycache__", ".idea", ".vscode"}
+EXCLUDE_DIRS = {"node_modules", "env", "venv", "__pycache__", ".idea", ".vscode", "backup-cron"}
 EXCLUDE_EXTENSIONS = {".pyc", ".log", ".cache"}
 
 def zip_directory(source_dir, zip_file_path):
@@ -38,10 +42,9 @@ def zip_directory(source_dir, zip_file_path):
                     file_path = os.path.join(foldername, filename)
                     arcname = os.path.relpath(file_path, start=source_dir)
                     zipf.write(file_path, arcname)
-        logging.info(f"Zipped {source_dir} to {zip_file_path} with maximum compression.")
+        logging.info(f"Zipped {source_dir} → {zip_file_path}")
     except Exception as e:
-        logging.error(f"Error zipping directory: {e}")
-        raise
+        logging.error(f"Error zipping {source_dir}: {e}")
 
 def authenticate():
     creds_path = os.path.join(BASE_DIR, 'credentials.json')
@@ -71,14 +74,12 @@ def get_or_create_folder(service, folder_name):
         results = service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
         items = results.get('files', [])
         if items:
-            logging.info(f"Found existing folder '{folder_name}' on Google Drive.")
             return items[0]['id']
         file_metadata = {
             'name': folder_name,
             'mimeType': 'application/vnd.google-apps.folder'
         }
         folder = service.files().create(body=file_metadata, fields='id').execute()
-        logging.info(f"Created folder '{folder_name}' on Google Drive.")
         return folder.get('id')
     except Exception as e:
         logging.error(f"Error getting or creating folder: {e}")
@@ -94,17 +95,16 @@ def upload_to_drive(file_path):
             'parents': [folder_id]
         }
         media = MediaFileUpload(file_path, resumable=True)
-        file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-        logging.info(f"Uploaded '{file_path}' to Google Drive 'Code-Backup' folder with file ID: {file.get('id')}")
+        uploaded = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+        logging.info(f"Uploaded: {os.path.basename(file_path)} → Drive ID: {uploaded.get('id')}")
     except Exception as e:
-        logging.error(f"Error uploading to Google Drive: {e}")
-        raise
+        logging.error(f"Failed to upload {file_path} to Drive: {e}")
 
 if __name__ == "__main__":
-    parent_folder_path = "/home/mithun/sgc-project"
-    output_zip_path = os.path.join(BASE_DIR, f"backup-{(datetime.date.today()).strftime('%Y-%m-%d')}.zip")
-    try:
-        zip_directory(parent_folder_path, output_zip_path)
-        upload_to_drive(output_zip_path)
-    except Exception as e:
-        logging.critical(f"Backup process failed: {e}")
+    for entry in os.listdir(PARENT_FOLDER_PATH):
+        full_path = os.path.join(PARENT_FOLDER_PATH, entry)
+        if os.path.isdir(full_path):
+            zip_filename = f"backup/{entry}_{DATE_SUFFIX}.zip"
+            zip_path = os.path.join(BASE_DIR, zip_filename)
+            zip_directory(full_path, zip_path)
+            upload_to_drive(zip_path)
