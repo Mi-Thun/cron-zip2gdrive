@@ -28,14 +28,14 @@ logging.basicConfig(
 )
 
 projects = {
-    "3pcl-lms": False,
+    "3pcl-lms": True,
     "bg-ebg-185123": True,
     "bg-elending-8623": True,
-    "bibili": False,
+    "bibili": True,
     "card-payment": True,
     "card-services": True,
     "database-docker": True,
-    "dwh": False,
+    "dwh": True,
     "dwh-working_importer": True,
     "gastroliver": True,
     "golimit": True,
@@ -43,9 +43,9 @@ projects = {
     "limit-doc": True,
     "mcc": True,
     "rm-tagging": True,
-    "samsuddin-portfolio": False,
+    "samsuddin-portfolio": True,
     "section-roster": True,
-    "sgcsoft-website": False,
+    "sgcsoft-website": True,
     "sme": True,
     "tax-return": True,
     "tdtr-encashment": True,
@@ -134,3 +134,10 @@ if __name__ == "__main__":
             zip_path = os.path.join(BASE_DIR, zip_filename)
             zip_directory(full_path, zip_path)
             upload_to_drive(zip_path)
+            delete_after_upload = True
+            if delete_after_upload and os.path.exists(zip_path):
+                os.remove(zip_path)
+                logging.info(f"Deleted local zip file: {zip_path}")
+        else:
+            logging.warning(f"Skipping non-directory entry: {full_path}")
+    logging.info("Backup process completed.")
