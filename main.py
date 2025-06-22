@@ -27,32 +27,15 @@ logging.basicConfig(
     ]
 )
 
-projects = {
-    "3pcl-lms": True,
-    "bg-ebg-185123": True,
-    "bg-elending-8623": True,
-    "bibili": True,
-    "card-payment": True,
-    "card-services": True,
-    "database-docker": True,
-    "dwh": True,
-    "dwh-working_importer": True,
-    "gastroliver": True,
-    "golimit": True,
-    "inteliqx": True,
-    "limit-doc": True,
-    "mcc": True,
-    "rm-tagging": True,
-    "samsuddin-portfolio": True,
-    "section-roster": True,
-    "sgcsoft-website": True,
-    "sme": True,
-    "tax-return": True,
-    "tdtr-encashment": True,
-    "tdtr-encashment-ssl": True,
-    "#document": True,
-    "backup-cron": True,
-}
+projects = {}
+today = datetime.date.today()
+for entry in os.listdir(PARENT_FOLDER_PATH):
+    full_path = os.path.join(PARENT_FOLDER_PATH, entry)
+    if os.path.isdir(full_path):
+        mtime = datetime.date.fromtimestamp(os.path.getmtime(full_path))
+        projects[entry] = (mtime == today)
+        
+print(f"Projects: {projects}")
 
 EXCLUDE_DIRS = {k for k, v in projects.items() if not v}
 EXCLUDE_DIRS.update({"node_modules", "env", "venv", "__pycache__", ".idea", ".vscode"})
@@ -131,14 +114,18 @@ if __name__ == "__main__":
     for entry in os.listdir(PARENT_FOLDER_PATH):
         full_path = os.path.join(PARENT_FOLDER_PATH, entry)
         if os.path.isdir(full_path):
-            zip_filename = f"backup/{entry}_{DATE_SUFFIX}.zip"
-            zip_path = os.path.join(BASE_DIR, zip_filename)
-            zip_directory(full_path, zip_path)
-            upload_to_drive(zip_path)
-            delete_after_upload = True
-            if delete_after_upload and os.path.exists(zip_path):
-                os.remove(zip_path)
-                logging.info(f"Deleted local zip file: {zip_path}")
+            mtime = datetime.date.fromtimestamp(os.path.getmtime(full_path))
+            if mtime == today:
+                zip_filename = f"backup/{entry}_{DATE_SUFFIX}.zip"
+                zip_path = os.path.join(BASE_DIR, zip_filename)
+                zip_directory(full_path, zip_path)
+                upload_to_drive(zip_path)
+                delete_after_upload = True
+                if delete_after_upload and os.path.exists(zip_path):
+                    os.remove(zip_path)
+                    logging.info(f"Deleted local zip file: {zip_path}")
+            else:
+                logging.info(f"Skipping {entry}: not modified today.")
         else:
             logging.warning(f"Skipping non-directory entry: {full_path}")
     logging.info("Backup process completed.")
