@@ -1,8 +1,3 @@
-# https://console.cloud.google.com/apis/library/drive.googleapis.com?project=backup-463008&inv=1&invt=Ab0K4w
-# pip install --user google-api-python-client google-auth-httplib2 google-auth-oauthlib
-# chmod +x /home/mithun/zip.py
-# crontab -e
-
 import os
 import zipfile
 import datetime
@@ -17,6 +12,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_FOLDER_PATH = "/home/mithun/sgc-project"
 DATE_SUFFIX = datetime.date.today().strftime("%Y-%m-%d")
 LOG_FILE = os.path.join(BASE_DIR, 'backup-cron.log')
+today = datetime.date.today()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,18 +23,7 @@ logging.basicConfig(
     ]
 )
 
-projects = {}
-today = datetime.date.today()
-for entry in os.listdir(PARENT_FOLDER_PATH):
-    full_path = os.path.join(PARENT_FOLDER_PATH, entry)
-    if os.path.isdir(full_path):
-        mtime = datetime.date.fromtimestamp(os.path.getmtime(full_path))
-        projects[entry] = (mtime == today)
-        
-print(f"Projects: {projects}")
-
-EXCLUDE_DIRS = {k for k, v in projects.items() if not v}
-EXCLUDE_DIRS.update({"node_modules", "env", "venv", "__pycache__", ".idea", ".vscode"})
+EXCLUDE_DIRS={"node_modules", "env", "venv", "__pycache__", ".idea", ".vscode"}
 EXCLUDE_EXTENSIONS = {".pyc", ".log", ".cache"}
 
 def zip_directory(source_dir, zip_file_path):
@@ -115,7 +100,8 @@ if __name__ == "__main__":
         full_path = os.path.join(PARENT_FOLDER_PATH, entry)
         if os.path.isdir(full_path):
             mtime = datetime.date.fromtimestamp(os.path.getmtime(full_path))
-            if mtime == today:
+            backup_all = True  # Set to True to backup all directories regardless of modification date
+            if backup_all or mtime == today:
                 zip_filename = f"backup/{entry}_{DATE_SUFFIX}.zip"
                 zip_path = os.path.join(BASE_DIR, zip_filename)
                 zip_directory(full_path, zip_path)
