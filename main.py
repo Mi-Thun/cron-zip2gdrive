@@ -50,7 +50,8 @@ projects = {
     "tax-return": True,
     "tdtr-encashment": True,
     "tdtr-encashment-ssl": True,
-    "#document": True
+    "#document": True,
+    "backup-cron": True,
 }
 
 EXCLUDE_DIRS = {k for k, v in projects.items() if not v}
@@ -115,7 +116,7 @@ def upload_to_drive(file_path):
     try:
         creds = authenticate()
         service = build('drive', 'v3', credentials=creds)
-        folder_id = get_or_create_folder(service, 'Code-Backup')
+        folder_id = get_or_create_folder(service, f'{DATE_SUFFIX}_Backup')
         file_metadata = {
             'name': os.path.basename(file_path),
             'parents': [folder_id]
