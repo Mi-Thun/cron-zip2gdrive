@@ -111,22 +111,64 @@ def folder_has_file_modified_today(folder_path):
     return False
 
 if __name__ == "__main__":
+    # Check if today is the 1st day of the month for full backup
+    is_monthly_backup = today.day == 1
+    
+    # Ensure backup directory exists
+    backup_dir = os.path.join(BASE_DIR, 'backup')
+    os.makedirs(backup_dir, exist_ok=True)
+    
+    if is_monthly_backup:
+        logging.info("Monthly backup: Backing up all folders (1st day of the month)")
+    else:
+        logging.info("Daily backup: Only backing up folders with files modified today")
+    
+    # Authenticate once for all uploads
+    try:
+        creds = authenticate()
+        service = build('drive', 'v3', credentials=creds)
+        folder_id = get_or_create_folder(service, f'{DATE_SUFFIX}_Backup')
+    except Exception as e:
+        logging.error(f"Failed to authenticate or create Drive folder: {e}")
+        exit(1)
+    
     for entry in os.listdir(PARENT_FOLDER_PATH):
         if entry in EXCLUDE_DIRS:
             continue
         full_path = os.path.join(PARENT_FOLDER_PATH, entry)
         if os.path.isdir(full_path):
-            if folder_has_file_modified_today(full_path):
-                zip_filename = f"backup/{entry}_{DATE_SUFFIX}.zip"
-                zip_path = os.path.join(BASE_DIR, zip_filename)
-                zip_directory(full_path, zip_path)
-                upload_to_drive(zip_path)
-                delete_after_upload = True
-                if delete_after_upload and os.path.exists(zip_path):
-                    os.remove(zip_path)
-                    logging.info(f"Deleted local zip file: {zip_path}")
-            else:
-                logging.info(f"Skipping {entry}: no file modified today.")
+            try:
+                # Backup all folders on 1st day of month, otherwise only modified ones
+                should_backup = is_monthly_backup or folder_has_file_modified_today(full_path)
+                
+                if should_backup:
+                    backup_type = "monthly" if is_monthly_backup else "daily"
+                    logging.info(f"Starting {backup_type} backup for: {entry}")
+                    
+                    zip_filename = f"backup/{entry}_{DATE_SUFFIX}.zip"
+                    zip_path = os.path.join(BASE_DIR, zip_filename)
+                    zip_directory(full_path, zip_path)
+                    
+                    # Upload using pre-authenticated service
+                    file_metadata = {
+                        'name': os.path.basename(zip_path),
+                        'parents': [folder_id]
+                    }
+                    media = MediaFileUpload(zip_path, resumable=True)
+                    uploaded = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+                    logging.info(f"Uploaded: {os.path.basename(zip_path)} → Drive ID: {uploaded.get('id')}")
+                    
+                    delete_after_upload = True
+                    if delete_after_upload and os.path.exists(zip_path):
+                        os.remove(zip_path)
+                        logging.info(f"Deleted local zip file: {zip_path}")
+                else:
+                    logging.info(f"Skipping {entry}: no file modified today.")
+            except Exception as e:
+                logging.error(f"Failed to backup {entry}: {e}")
+                continue  # Continue with next folder
         else:
             logging.warning(f"Skipping non-directory entry: {full_path}")
-    logging.info("Backup process completed.")
+    
+    backup_type = "Monthly" if is_monthly_backup else "Daily"
+    logging.info(f"{backup_type} backup process completed.")
