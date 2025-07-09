@@ -95,13 +95,28 @@ def upload_to_drive(file_path):
     except Exception as e:
         logging.error(f"Failed to upload {file_path} to Drive: {e}")
 
+def folder_has_file_modified_today(folder_path):
+    for root, subdirs, files in os.walk(folder_path):
+        subdirs[:] = [d for d in subdirs if d not in EXCLUDE_DIRS]
+        for fname in files:
+            if any(fname.endswith(ext) for ext in EXCLUDE_EXTENSIONS):
+                continue
+            fpath = os.path.join(root, fname)
+            try:
+                mtime = datetime.date.fromtimestamp(os.path.getmtime(fpath))
+                if mtime == today:
+                    return True
+            except Exception as e:
+                logging.warning(f"Could not check mtime for {fpath}: {e}")
+    return False
+
 if __name__ == "__main__":
     for entry in os.listdir(PARENT_FOLDER_PATH):
+        if entry in EXCLUDE_DIRS:
+            continue
         full_path = os.path.join(PARENT_FOLDER_PATH, entry)
         if os.path.isdir(full_path):
-            mtime = datetime.date.fromtimestamp(os.path.getmtime(full_path))
-            backup_all = True  # Set to True to backup all directories regardless of modification date
-            if backup_all or mtime == today:
+            if folder_has_file_modified_today(full_path):
                 zip_filename = f"backup/{entry}_{DATE_SUFFIX}.zip"
                 zip_path = os.path.join(BASE_DIR, zip_filename)
                 zip_directory(full_path, zip_path)
@@ -111,7 +126,7 @@ if __name__ == "__main__":
                     os.remove(zip_path)
                     logging.info(f"Deleted local zip file: {zip_path}")
             else:
-                logging.info(f"Skipping {entry}: not modified today.")
+                logging.info(f"Skipping {entry}: no file modified today.")
         else:
             logging.warning(f"Skipping non-directory entry: {full_path}")
     logging.info("Backup process completed.")
