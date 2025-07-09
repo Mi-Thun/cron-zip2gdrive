@@ -112,7 +112,7 @@ def folder_has_file_modified_today(folder_path):
 
 if __name__ == "__main__":
     # Check if today is the 1st day of the month for full backup
-    is_monthly_backup = today.day == 1
+    is_monthly_backup = today.day == 9
     
     # Ensure backup directory exists
     backup_dir = os.path.join(BASE_DIR, 'backup')
@@ -145,7 +145,7 @@ if __name__ == "__main__":
                     backup_type = "monthly" if is_monthly_backup else "daily"
                     logging.info(f"Starting {backup_type} backup for: {entry}")
                     
-                    zip_filename = f"backup/{entry}_{DATE_SUFFIX}.zip"
+                    zip_filename = f"backup/{entry}.zip"
                     zip_path = os.path.join(BASE_DIR, zip_filename)
                     zip_directory(full_path, zip_path)
                     
